@@ -1,42 +1,65 @@
 import librosa
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import librosa.display
 from pydub import AudioSegment
 AudioSegment.ffmpeg = "C:/ffmpeg"
 
-def convert_mp3_to_wav(mp3_file, wav_path):
-    audio = AudioSegment.from_file(mp3_file)
-    audio.export(wav_path, format="wav")
+#mp3 -> wav
+audio = AudioSegment.from_file('test.mp3')
+audio.export("test.wav", format="wav")
 
-def extract_freq(wav_path):
-    y, sr = librosa.load(wav_path) #'load as floating point time series'. y = time series, sr = sample rate
-    D = np.abs(librosa.stft(y)) #short-time fourier transform outputting D[freq, time]
-    freq = librosa.fft_frequencies(sr=sr)
-    return freq, D
-    
-def extract_notes(freq, D):
-    notes = []
-    for idx, magnitude in enumerate(D):
-        if magnitude.any():
-            max_idx = np.argmax(magnitude)
-            freq = freq[max_idx]
-            note = librosa.hz_to_note(freq)
-            notes.append(note)
-    return notes
+# Load the audio file. y = time series, sr = sample rate
+y, sr = librosa.load('test.wav', sr=22050);
 
-def save_notes_to_file(notes, output_file):
-    with open(output_file, 'w') as f:
-        for note in notes:
-            f.write(f"{note}\n")
+# Only want harmonic portion of audio
+y_harmonic, y_percussive = librosa.effects.hpss(y)
 
-def main(mp3_path, output_file):
-    wav_path = "temp.wav"
-    convert_mp3_to_wav(mp3_path, wav_path)
-    frequencies, D = extract_freq(wav_path)
-    notes = extract_notes(frequencies, D)
-    save_notes_to_file(notes, output_file)
+# Pitch estimation:
+# fmin for low D whistle is D4, fmax for high D whistle is B6
+f0, voiced_flag, voiced_probs = librosa.pyin(y_harmonic, fmin=librosa.note_to_hz('D4'), fmax=librosa.note_to_hz('B6'))
+# f0 = array of estimated frequencies
+# voiced_flag = array of booleans indicating whether each frame has detectable pitch (voiced)
+# voiced_probs = array of probabilities of each frame being voiced (0 to 1)
 
-# if __name__ == "__main__":
-#     mp3_path = "input.mp3"
-#     output_file = "output_notes.txt"
+# Convert Hz to note
+def hz_to_note_with_threshold(frequency, voiced_prob, threshold=.9):
+    # Get frequency if high likelyhood of valid pitch
+    if frequency > 0 and voiced_prob > threshold:
+        return librosa.hz_to_note(frequency)
+    return "N/A"
 
-main('test.mp3', 'output_file.txt')
+# Create list of notes
+notes = [hz_to_note_with_threshold(freq, prob) for freq, prob in zip(f0, voiced_probs)]
+
+# Convert to Pandas Series for easier processing
+notes_series = pd.Series(notes)
+
+# Remove consecutive duplicates and filter out "N/A"
+notes_series = notes_series[notes_series.shift() != notes_series]
+notes_series = notes_series[notes_series != "N/A"]
+
+# Print the resulting notes
+print(notes_series.tolist())
+
+fig, ax = plt.subplots(2, 1, figsize=(14, 10))
+
+# Plot the estimated pitch over time
+times = librosa.times_like(f0)
+ax[0].plot(times, f0, label='Estimated pitch', color='r')
+ax[0].set_xlabel('Time (s)')
+ax[0].set_ylabel('Frequency (Hz)')
+ax[0].set_title('Estimated pitch over time')
+ax[0].legend()
+
+# Compute STFT array
+D = np.abs(librosa.stft(y))
+# Plot the spectrogram
+img = librosa.display.specshow(librosa.amplitude_to_db(D, ref=np.max), sr=sr, x_axis='time', y_axis='log', ax=ax[1])
+fig.colorbar(img, ax=ax[1], format='%+2.0f dB')
+ax[1].set_title('Spectrogram (dB)')
+
+# Display the plots
+plt.tight_layout()
+plt.show()
