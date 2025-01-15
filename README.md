@@ -14,8 +14,8 @@ The API will save the posted .mp3 file to a folder, then convert it from .mp3 to
 1. **Clone the repository:**
    
    ```bash
-   git clone git@github.com:Hacob-Jarris/mp3-tw.git
-   cd mp3-tw
+   git clone git@github.com:bocsir/mp3-notes.git
+   cd mp3-notes
    ```
 
 2. **Create virtual enviroment:**
@@ -26,16 +26,15 @@ The API will save the posted .mp3 file to a folder, then convert it from .mp3 to
 
 3. **Activate virtual environment:**
 
-    Windows: 
-    ```bash
-    env/Scripts/activate
-    ```
-    
     Linux and macOS:
     ```bash
     source env/bin/activate
     ```
 
+    Windows: 
+    ```bash
+    env/Scripts/activate
+    ```
 4. **Install dependencies**
   
     ```bash
@@ -43,18 +42,18 @@ The API will save the posted .mp3 file to a folder, then convert it from .mp3 to
     ```
 
 5. **Configure Flask**
-
-    Windows:
-    ```bash
-    set FLASK_APP=app.py
-    ```
-  
+   
     Linux and macOS:
     ```bash
     export FLASK_APP=app.py
     ```
   
-6. **Using the API**
+    Windows:
+    ```bash
+    set FLASK_APP=app.py
+    ```
+
+7. **Using the API**
 
     Start flask application:
     ```bash
